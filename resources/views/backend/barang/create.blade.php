@@ -49,8 +49,8 @@
                                 <span class="invalid-feedback">{{ $message }}</span>
                             @enderror
                         </div>
-                        <button type="submit" class="btn btn-primary">Simpan Barang</button>
-                        <a href="{{ route('barang.index') }}" class="btn btn-secondary">Kembali</a>
+                        <button type="submit" class="btn btn-primary">SIMPAN</button>
+                        <a href="{{ route('barang.index') }}" class="btn btn-secondary">KEMBALI</a>
                     </form>
                 </div>
             </div>

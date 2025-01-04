@@ -1,3 +1,4 @@
+
 @extends ('backend.layouts.adm_template')
 @section ('content')
 
@@ -43,7 +44,7 @@
 
                     <!-- Submit buttons -->
                     <div class="form-group">
-                        <button type="submit" class="btn btn-primary">UPDATE</button>
+                        <button type="submit" class="btn btn-primary">PERBARUI</button>
                         <a href="{{ route('kategori.index') }}" class="btn btn-secondary">BATAL</a>
                     </div>
                 </form>

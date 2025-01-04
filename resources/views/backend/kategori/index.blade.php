@@ -17,7 +17,7 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col">
-                        <a href="{{ route('kategori.create') }}" type="button" class="btn btn-success">ADD</a>
+                        <a href="{{ route('kategori.create') }}" type="button" class="btn btn-success"><i class="fas fa-plus"></i></a>
                     </div>
                     <div class="col">
                         <form action="/kategori" method="GET">

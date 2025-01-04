@@ -42,35 +42,81 @@ class BarangKeluarController extends Controller
     // Menyimpan data barang keluar baru
     public function store(Request $request)
 {
-    // Validasi input yang diterima
-    $request->validate([
-        'barang_id' => 'required|exists:barang,id', // Pastikan barang ada di database
-        'tgl_keluar' => 'required|date', // Validasi tanggal keluar
-        'qty_keluar' => 'required|integer|min:1', // Validasi jumlah keluar
+    // Find the Barang record based on barang_id from the request
+    $rsetBarang = Barang::find($request->barang_id);
+
+    $validator = Validator::make($request->all(), [
+        'tgl_keluar' => 'required|date|after_or_equal:tgl_masuk',
+        'qty_keluar' => 'nullable|integer',
+        'barang_id' => 'required|exists:barang,id',
+    ], [
+        'tgl_keluar.after_or_equal' => 'Tanggal keluar harus setelah atau sama dengan tanggal masuk.',
     ]);
 
-    // Dapatkan barang masuk paling awal dari database
-    $barangMasuk = BarangMasuk::where('barang_id', $request->barang_id)
-        ->orderBy('tgl_masuk', 'asc')
-        ->first(); // Ambil tanggal barang masuk paling awal
+    // Get the earliest tgl_masuk for the given barang_id
+    $tgl_masuk = BarangMasuk::where('barang_id', $request->barang_id)->value('tgl_masuk');
+    $tgl_keluar = $request->input('tgl_keluar'); // Get tgl_keluar from the request
 
-    if (!$barangMasuk) {
-        return back()->withErrors(['barang_id' => 'Barang tidak ditemukan dalam data barang masuk.']);
+    // Check if tgl_keluar is before tgl_masuk
+    if ($tgl_keluar < $tgl_masuk) {
+        return redirect()->route('barangkeluar.create')->with(['Gagal' => 'Tanggal Keluar Tidak Boleh Lebih Awal Dari Tanggal Masuk']);
     }
 
-    // Validasi tanggal keluar tidak boleh lebih awal dari tanggal masuk
-    if ($request->tgl_keluar < $barangMasuk->tgl_masuk) {
-        return back()->withErrors(['tgl_keluar' => 'Tanggal keluar tidak boleh kurang dari tanggal masuk.']);
+    // Validate request data
+    if ($validator->fails()) {
+        return redirect()->route('barangkeluar.create')
+            ->withErrors($validator)
+            ->withInput();
     }
 
-    // Proses penyimpanan jika validasi berhasil
-    BarangKeluar::create([
-        'barang_id' => $request->barang_id,
-        'tgl_keluar' => $request->tgl_keluar,
-        'qty_keluar' => $request->qty_keluar,
-    ]);
+    // Additional validation to check if stok is sufficient
+    $validator->after(function ($validator) use ($rsetBarang, $request) {
+        if ($rsetBarang->stok < $request->qty_keluar) {
+            $validator->errors()->add('qty_keluar', 'Stok tidak mencukupi.');
+        }
+    });
 
-    return redirect()->route('barangkeluar.index')->with('success', 'Data barang keluar berhasil disimpan.');
+    if ($validator->fails()) {
+        return redirect()->route('barangkeluar.create')
+                         ->withErrors($validator)
+                         ->withInput();
+    }
+
+    // Begin the database transaction
+    DB::beginTransaction();
+
+    try {
+        // Create a new BarangKeluar entry
+        BarangKeluar::create([
+            'tgl_keluar' => $request->tgl_keluar,
+            'qty_keluar' => $request->qty_keluar,
+            'barang_id' => $request->barang_id,
+        ]);
+
+        // Update the stok for the Barang
+        $rsetBarang->stok -= $request->qty_keluar;
+        $rsetBarang->save();
+
+        // Commit the transaction
+        DB::commit();
+
+        return redirect()->route('barangkeluar.index')->with(['success' => 'Data Berhasil Disimpan!']);
+    } catch (QueryException $e) {
+        // Rollback the transaction if any error occurs
+        DB::rollBack();
+
+        return redirect()->route('barangkeluar.create')
+                         ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])
+                         ->withInput();
+    }
+}
+
+
+public function show(string $id)
+{
+    $rsetBarangKeluar = BarangKeluar::find($id); // Find the specific BarangKeluar record by ID
+
+    return view('backend.b_keluar.show', compact('rsetBarangKeluar'));
 }
 
 
@@ -82,6 +128,63 @@ class BarangKeluarController extends Controller
     return view('backend.b_keluar.create', compact('rsetBarang')); // Pass the variable to the view
 }
 
+public function edit(string $id)
+{
+    $rsetBarangKeluar = BarangKeluar::find($id); // Find the specific BarangKeluar record by ID
+    $rsetBarang = Barang::all(); // Fetch all Barang records to populate dropdown options
+
+    return view('backend.b_keluar.edit', compact('rsetBarangKeluar', 'rsetBarang'));
+}
+
+public function update(Request $request, string $id)
+{
+    // Validate the incoming data
+    $validator = Validator::make($request->all(), [
+        'barang_id' => 'required|exists:barang,id',
+        'tgl_keluar' => 'required|date',
+        'qty_keluar' => 'required|integer|min:1',
+    ]);
+
+    if ($validator->fails()) {
+        return redirect()->route('barangkeluar.edit', $id)
+                         ->withErrors($validator)
+                         ->withInput();
+    }
+
+    // Start a transaction
+    DB::beginTransaction();
+
+    try {
+        // Find the specific BarangKeluar record
+        $rsetBarangKeluar = BarangKeluar::find($id);
+        
+        // Update the stock in Barang if qty_keluar changes
+        if ($request->qty_keluar != $rsetBarangKeluar->qty_keluar) {
+            $barang = Barang::find($request->barang_id);
+            // Adjust stock based on the new qty_keluar
+            $barang->stok += $rsetBarangKeluar->qty_keluar - $request->qty_keluar;
+            $barang->save();
+        }
+
+        // Update the BarangKeluar record
+        $rsetBarangKeluar->update([
+            'barang_id' => $request->barang_id,
+            'tgl_keluar' => $request->tgl_keluar,
+            'qty_keluar' => $request->qty_keluar,
+        ]);
+
+        // Commit the transaction
+        DB::commit();
+
+        return redirect()->route('barangkeluar.index')->with('success', 'Data Berhasil Diperbarui!');
+    } catch (QueryException $e) {
+        // Rollback transaction if an error occurs
+        DB::rollBack();
+        return redirect()->route('barangkeluar.edit', $id)
+                         ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data.'])
+                         ->withInput();
+    }
+}
 
 
     // Hapus data barang keluar

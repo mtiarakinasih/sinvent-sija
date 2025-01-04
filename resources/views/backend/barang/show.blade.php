@@ -53,7 +53,7 @@
             <!-- Tombol Kembali -->
             <div class="row">
                 <div class="col text-center">
-                    <a href="{{ route('barang.index') }}" class="btn btn-md btn-dark mb-3 mx-auto">BACK</a>
+                    <a href="{{ route('barang.index') }}" class="btn btn-md btn-dark mb-3 mx-auto">KEMBALI</a>
                 </div>
             </div>
         </div>

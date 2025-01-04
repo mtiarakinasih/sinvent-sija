@@ -8,28 +8,28 @@ use App\Http\Controllers\BarangController;
 use App\Http\Controllers\BarangMasukController;
 use App\Http\Controllers\BarangKeluarController;
 
-// Rute yang tidak memerlukan autentikasi
+// Rute Awal
 Route::get('/', function () {
-    return view('welcome');
+    return Auth::check() ? redirect()->route('dashboard') : view('auth.login');
 });
 
-// Rute Register
-Route::get('/register', [RegisterController::class, 'showRegisterForm'])->name('register');
-Route::post('/register', [RegisterController::class, 'register'])->name('register.post');
-
-// Rute Login
+// Rute Login dan Register
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
 
-// Rute Logout
+Route::get('/register', [RegisterController::class, 'showRegisterForm'])->name('register');
+Route::post('/register', [RegisterController::class, 'register'])->name('register.post');
+
+// Rute Logout (untuk user yang sudah login)
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Rute yang memerlukan autentikasi
-Route::middleware('auth')->group(function () {
-    Route::get('/kategori', [CategoryController::class, 'index'])->name('kategori.index');
-    Route::resource('kategori', CategoryController::class);
-});
+// Rute yang Memerlukan Autentikasi
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [CategoryController::class, 'categoryChartData'])->name('dashboard');
 
-route::resource('barang', BarangController::class);
-Route::resource('barangmasuk', BarangMasukController::class);
-route::resource('barangkeluar', BarangKeluarController::class);
+    // Resource Routes
+    Route::resource('/kategori', CategoryController::class)->names('kategori');
+    Route::resource('/barang', BarangController::class);
+    Route::resource('/barangmasuk', BarangMasukController::class);
+    Route::resource('/barangkeluar', BarangKeluarController::class);
+});
