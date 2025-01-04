@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Barang;
-use App\Models\Kategori; // Pastikan untuk mengimpor model Kategori
+use App\Models\Kategori;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth; // Untuk mendapatkan user yang login
 
 class BarangController extends Controller
 {
@@ -65,13 +66,14 @@ class BarangController extends Controller
 
         $stok = $request->input('stok', 0) ?? 0;
 
-        // Menyimpan barang ke database
+        // Menyimpan barang ke database dengan user_id yang terhubung dengan pengguna yang login
         Barang::create([
             'merk' => $request->merk,
             'seri' => $request->seri,
             'spesifikasi' => $request->spesifikasi,
             'stok' => $stok,
             'kategori_id' => $request->kategori_id,
+            'user_id' => Auth::id(), // Menyimpan user_id yang saat ini login
         ]);
 
         return redirect()->route('barang.index')->with(['success' => 'Data Barang Berhasil Disimpan!']);
@@ -79,18 +81,16 @@ class BarangController extends Controller
 
     // Menampilkan detail barang
     public function show(string $id)
-{
-    // Mengambil data barang dengan join ke kategori
-    $rsetBarang = DB::table('barang')
-        ->leftJoin('kategori', 'barang.kategori_id', '=', 'kategori.id')
-        ->select('barang.*', 'kategori.deskripsi', DB::raw('ketKategori(kategori.kategori) as ket'))
-        ->where('barang.id', $id)
-        ->first(); // Mengambil satu data barang
+    {
+        // Mengambil data barang dengan join ke kategori
+        $rsetBarang = DB::table('barang')
+            ->leftJoin('kategori', 'barang.kategori_id', '=', 'kategori.id')
+            ->select('barang.*', 'kategori.deskripsi', DB::raw('ketKategori(kategori.kategori) as ket'))
+            ->where('barang.id', $id)
+            ->first(); // Mengambil satu data barang
 
-    return view('backend.barang.show', compact('rsetBarang'));
-}
-
-
+        return view('backend.barang.show', compact('rsetBarang'));
+    }
 
     // Menampilkan form untuk mengedit barang
     public function edit(string $id)
@@ -132,7 +132,7 @@ class BarangController extends Controller
     // Menghapus barang
     public function destroy($id)
     {
-        //Mengecek apakah barang masih digunakan dalam tabel lain
+        // Mengecek apakah barang masih digunakan dalam tabel lain
         if (DB::table('b_masuk')->where('barang_id', $id)->exists() || DB::table('b_keluar')->where('barang_id', $id)->exists()) {
             return redirect()->route('barang.index')->with(['Gagal' => 'Data Gagal Dihapus!']);
         } else {
@@ -140,6 +140,5 @@ class BarangController extends Controller
             $barang->delete();
             return redirect()->route('barang.index')->with(['success' => 'Data Berhasil Dihapus!']);
         }
-        
     }
 }

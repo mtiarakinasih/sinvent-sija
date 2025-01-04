@@ -9,24 +9,28 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
-{
-    Schema::table('b_masuk', function (Blueprint $table) {
-        $table->foreignId('aktivitas_log_id')
-            ->nullable()
-            ->constrained('aktivitas_logs')
-            ->onDelete('cascade');
-    });
-}
-
+    public function up(): void
+    {
+        Schema::table('b_masuk', function (Blueprint $table) {
+            if (!Schema::hasColumn('b_masuk', 'aktivitas_log_id')) {
+                $table->foreignId('aktivitas_log_id')
+                    ->nullable()
+                    ->constrained('aktivitas_logs')
+                    ->onDelete('cascade');
+            }
+        });
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::table('bmasuk', function (Blueprint $table) {
-            //
+        Schema::table('b_masuk', function (Blueprint $table) {
+            if (Schema::hasColumn('b_masuk', 'aktivitas_log_id')) {
+                $table->dropForeign(['aktivitas_log_id']);
+                $table->dropColumn('aktivitas_log_id');
+            }
         });
     }
 };

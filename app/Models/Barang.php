@@ -17,6 +17,7 @@ class Barang extends Model
         'spesifikasi',
         'stok',
         'kategori_id',
+        'user_id',
     ];
 
     // Relasi ke Kategori
@@ -35,5 +36,11 @@ class Barang extends Model
     public function barangKeluar()
     {
         return $this->hasMany(BarangKeluar::class);
+    }
+
+    // Relasi ke User
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

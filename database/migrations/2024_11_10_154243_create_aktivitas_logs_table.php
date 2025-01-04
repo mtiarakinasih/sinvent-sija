@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('activity_type'); // e.g., 'Barang Masuk', 'Barang Keluar'
             $table->string('description');   // e.g., 'Printer, Kategori: Elektronik'
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps(0);  // Adds created_at and updated_at
         });
     }
 
@@ -24,26 +24,26 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Nonaktifkan pemeriksaan foreign key sementara
+        // Disable foreign key checks temporarily
         Schema::disableForeignKeyConstraints();
 
-        // Drop foreign key constraints dari tabel terkait jika tabel tersebut ada
-        if (Schema::hasTable('b_masuk')) {
+        // Check and drop foreign key constraints if they exist
+        if (Schema::hasTable('b_masuk') && Schema::hasColumn('b_masuk', 'aktivitas_log_id')) {
             Schema::table('b_masuk', function (Blueprint $table) {
                 $table->dropForeign(['aktivitas_log_id']);
             });
         }
 
-        if (Schema::hasTable('b_keluar')) {
+        if (Schema::hasTable('b_keluar') && Schema::hasColumn('b_keluar', 'aktivitas_log_id')) {
             Schema::table('b_keluar', function (Blueprint $table) {
                 $table->dropForeign(['aktivitas_log_id']);
             });
         }
 
-        // Hapus tabel aktivitas_logs
+        // Drop the 'aktivitas_logs' table
         Schema::dropIfExists('aktivitas_logs');
 
-        // Aktifkan kembali pemeriksaan foreign key
+        // Re-enable foreign key checks
         Schema::enableForeignKeyConstraints();
     }
 };
